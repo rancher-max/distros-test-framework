@@ -38,24 +38,25 @@ type clusterConfig struct {
 	Arch             string
 }
 
-func loadConfig() (*config.ProductConfig, error) {
+// GetConfigVarValue retrieves the value of a variable from the tfvars file
+func GetConfigVarValue(g GinkgoTInterface, variable string) (string, error) {
+	_, varDir, _, err := loadConfig()
+	if err != nil {
+		return "", shared.ReturnLogError("error loading config: %w\n", err)
+	}
+
+	return terraform.GetVariableAsStringFromVarFile(g, varDir, variable), nil
+}
+
+func loadConfig() (*config.ProductConfig, string, string, error) {
 	cfgPath, err := shared.EnvDir("factory")
 	if err != nil {
-		return nil, shared.ReturnLogError("error getting env path: %w\n", err)
+		return nil, "", "", shared.ReturnLogError("error getting env path: %w\n", err)
 	}
 
 	cfg, err := config.AddConfigEnv(cfgPath)
 	if err != nil {
-		return nil, shared.ReturnLogError("error getting config: %w\n", err)
-	}
-
-	return cfg, nil
-}
-
-func addTerraformOptions() (*terraform.Options, string, error) {
-	cfg, err := loadConfig()
-	if err != nil {
-		return nil, "", shared.ReturnLogError("error loading config: %w\n", err)
+		return nil, "", "", shared.ReturnLogError("error getting config: %w\n", err)
 	}
 
 	var varDir string
@@ -64,13 +65,22 @@ func addTerraformOptions() (*terraform.Options, string, error) {
 	varDir, err = filepath.Abs(shared.BasePath() +
 		fmt.Sprintf("/distros-test-framework/config/%s.tfvars", cfg.Product))
 	if err != nil {
-		return nil, "", shared.ReturnLogError("invalid product: %s\n", cfg.Product)
+		return cfg, "", "", shared.ReturnLogError("invalid product: %s\n", cfg.Product)
 	}
 
 	tfDir, err = filepath.Abs(shared.BasePath() +
 		fmt.Sprintf("/distros-test-framework/modules/%s", cfg.Product))
 	if err != nil {
-		return nil, "", shared.ReturnLogError("no module found for product: %s\n", cfg.Product)
+		return cfg, varDir, "", shared.ReturnLogError("no module found for product: %s\n", cfg.Product)
+	}
+
+	return cfg, varDir, tfDir, nil
+}
+
+func addTerraformOptions() (*terraform.Options, string, error) {
+	_, varDir, tfDir, err := loadConfig()
+	if err != nil {
+		return nil, "", shared.ReturnLogError("error loading config: %w\n", err)
 	}
 
 	terraformOptions := &terraform.Options{
@@ -86,7 +96,7 @@ func addClusterConfig(
 	varDir string,
 	terraformOptions *terraform.Options,
 ) (*Cluster, error) {
-	cfg, err := loadConfig()
+	cfg, _, _, err := loadConfig()
 	if err != nil {
 		return nil, shared.ReturnLogError("error loading config: %w", err)
 	}
