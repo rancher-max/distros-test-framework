@@ -8,18 +8,18 @@ RUN apk update && \
     apk add --no-cache curl git jq bash openssh unzip gcc g++ make ca-certificates aws-cli
 RUN rm -rf /var/cache/apk/*
 RUN if [ "$(uname -m)" = "aarch64" ]; then \
-        export KUBE_ARCH="linux/arm64" && \
-        export TF_ARCH="linux_arm64"; \
+        KUBE_ARCH="linux/arm64" && \
+        TF_ARCH="linux_arm64"; \
     else \
-        export KUBE_ARCH="linux/amd64" && \
-        export TF_ARCH="linux_amd64"; \
+        KUBE_ARCH="linux/amd64" && \
+        TF_ARCH="linux_amd64"; \
     fi && \
     curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/${KUBE_ARCH}/kubectl" && \
     chmod +x ./kubectl && \
     mv ./kubectl /usr/local/bin && \
-    mkdir tmp
-RUN curl "https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_${TF_ARCH}.zip" -o tmp/terraform.zip
-RUN unzip tmp/terraform.zip -d /usr/local/bin && \
+    mkdir tmp && \
+    curl "https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_${TF_ARCH}.zip" -o tmp/terraform.zip
+    unzip tmp/terraform.zip -d /usr/local/bin && \
     chmod +x /usr/local/bin/terraform && \
     export VERIFY_CHECKSUM=false
 RUN curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
